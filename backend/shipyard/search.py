@@ -25,6 +25,7 @@ class Query:
     year_to: int | None = None
     creator: str | None = None
     cluster_id: int | None = None
+    tags: tuple[str, ...] = ()      # AND match against item.tags
     include_ads: bool = True
     actionable: str = "all"       # all | actionable | info
     status: str | None = None     # saved | scheduled | resolved
@@ -76,6 +77,14 @@ def _prefilter(qy: Query) -> np.ndarray:
         m &= df["creator"].to_numpy() == qy.creator
     if qy.cluster_id is not None:
         m &= df["cluster_id"].to_numpy() == qy.cluster_id
+    if qy.tags:
+        wanted = {t.lower() for t in qy.tags}
+        tag_col = df["tags"].to_numpy()
+        keep = np.array(
+            [wanted.issubset({t.lower() for t in (row if row is not None else [])}) for row in tag_col],
+            dtype=bool,
+        )
+        m &= keep
     if not qy.include_ads:
         m &= ~df["is_ad"].to_numpy().astype(bool)
     if qy.actionable == "actionable":

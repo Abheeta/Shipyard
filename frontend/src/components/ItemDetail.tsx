@@ -15,11 +15,13 @@ export function ItemDetail({
   onClose,
   onUpdated,
   onOpen,
+  onTagClick,
 }: {
   item: Item;
   onClose: () => void;
   onUpdated: (it: Item) => void;
   onOpen: (it: Item) => void;
+  onTagClick?: (tag: string) => void;
 }) {
   const [note, setNote] = useState(item.state.user_note ?? "");
   const [intent, setIntent] = useState<Intent | "">(item.state.user_intent ?? "");
@@ -87,19 +89,43 @@ export function ItemDetail({
           {item.is_ad && <span className="badge badge--ad">sponsored</span>}
         </div>
 
-        {item.summary && <div className="panel__summary">{item.summary}</div>}
+        {item.summary && (
+          <div className="panel__section">
+            <span className="eyebrow">Summary</span>
+            <div className="panel__summary">{item.summary}</div>
+          </div>
+        )}
 
-        <div className={cx("well", !item.caption && "well--raw")}>
-          {item.caption || "No caption in the export — nothing to summarise."}
+        <div className="panel__section">
+          <span className="eyebrow">{item.caption ? "Original caption" : "Caption"}</span>
+          <div className={cx("well", !item.caption && "well--raw")}>
+            {item.caption || "No caption in the export — nothing to summarise."}
+          </div>
         </div>
 
         {item.tags.length > 0 && (
-          <div className="card__tags">
-            {item.tags.map((t) => (
-              <span className="tag" key={t}>
-                #{t}
-              </span>
-            ))}
+          <div className="panel__section">
+            <span className="eyebrow">Tags</span>
+            <div className="card__tags">
+              {item.tags.map((t) =>
+                onTagClick ? (
+                  <span
+                    className="tag tag--clickable"
+                    key={t}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onTagClick(t)}
+                    onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onTagClick(t)}
+                  >
+                    #{t}
+                  </span>
+                ) : (
+                  <span className="tag" key={t}>
+                    #{t}
+                  </span>
+                ),
+              )}
+            </div>
           </div>
         )}
 

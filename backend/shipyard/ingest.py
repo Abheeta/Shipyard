@@ -27,10 +27,29 @@ from pathlib import Path
 import pandas as pd
 
 
+def _fix_mojibake(s: str) -> str:
+    """Repair the Instagram export's encoding bug.
+
+    The export tool UTF-8-decoded its data as Latin-1 somewhere upstream, so
+    every emoji / curly-quote / accented character got split into 2-4 wrong
+    codepoints (e.g. "’" -> "â€™", "é" -> "Ã©"). Re-encoding as
+    Latin-1 recovers the original UTF-8 bytes; decoding those gives back the
+    real text. Pure-ASCII strings and genuinely-already-correct Unicode (any
+    codepoint > U+00FF) raise on the Latin-1 encode step and are returned
+    unchanged, so this is a safe no-op when nothing is broken.
+    """
+    if not s:
+        return s
+    try:
+        return s.encode("latin-1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return s
+
+
 def _labelled(label_values: list[dict], label: str) -> str:
     for lv in label_values:
         if lv.get("label") == label:
-            return (lv.get("value") or "").strip()
+            return _fix_mojibake((lv.get("value") or "").strip())
     return ""
 
 
@@ -46,14 +65,17 @@ def _hashtags(label_values: list[dict]) -> list[str]:
     for entry in _section(label_values, "Hashtags"):
         for kv in entry.get("dict", []):
             if kv.get("label") == "Name" and kv.get("value"):
-                out.append(kv["value"].strip().lstrip("#"))
+                out.append(_fix_mojibake(kv["value"].strip().lstrip("#")))
     return out
 
 
 def _owner(label_values: list[dict]) -> tuple[str, str]:
     for entry in _section(label_values, "Owner"):
         kvs = {kv.get("label"): (kv.get("value") or "") for kv in entry.get("dict", [])}
-        return kvs.get("Username", "").strip(), kvs.get("Name", "").strip()
+        return (
+            _fix_mojibake(kvs.get("Username", "").strip()),
+            _fix_mojibake(kvs.get("Name", "").strip()),
+        )
     return "", ""
 
 

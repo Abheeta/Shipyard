@@ -242,12 +242,30 @@ textarea.field { resize: vertical; min-height: 62px; line-height: 1.5; }
   color: var(--ink-faint);
 }
 .chip.is-active .chip__n { color: var(--accent-ink); }
+.chip__x { font-size: 10px; opacity: 0.65; }
+.console__row--tags { background: var(--accent-soft); }
 
 .tag {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--ink-dim);
 }
+.tag--clickable {
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color 0.12s, background 0.12s;
+}
+.tag--clickable:hover,
+.tag--clickable:focus-visible {
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+}
+.tag--more { color: var(--ink-faint); flex-shrink: 0; }
 
 .badge {
   display: inline-flex;
@@ -471,7 +489,13 @@ textarea.field { resize: vertical; min-height: 62px; line-height: 1.5; }
   overflow: hidden;
 }
 .card__summary.is-empty { color: var(--ink-faint); font-style: italic; }
-.card__tags { display: flex; flex-wrap: wrap; gap: 4px 9px; }
+.card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 9px;
+  min-width: 0;
+}
+.card__tags .tag { max-width: min(150px, 100%); min-width: 0; }
 .card__foot {
   display: flex;
   flex-wrap: wrap;

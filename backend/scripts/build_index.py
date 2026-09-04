@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections import Counter
 from datetime import datetime, timezone
 
 import numpy as np
@@ -79,6 +80,9 @@ def _facets(df) -> dict:
 
     substantive = int((df["caption"].str.len() > 80).sum())
 
+    tag_counts = Counter(t for tags in df["tags"] for t in (tags or []))
+    top_tags = [{"tag": t, "count": n} for t, n in tag_counts.most_common(60)]
+
     return {
         "total_items": len(df),
         "saved_count": len(saved),
@@ -88,6 +92,7 @@ def _facets(df) -> dict:
         "top_creators_saved": top_creators(saved),
         "top_creators_liked": top_creators(liked),
         "top_creators_combined": top_creators(df),
+        "top_tags": top_tags,
         "like_save_gap": gap,
         "year_counts": {
             str(int(k)): int(v)

@@ -56,6 +56,7 @@ def search(
     year_to: int | None = None,
     creator: str | None = None,
     cluster_id: int | None = None,
+    tags: list[str] = Q([]),
     include_ads: bool = True,
     actionable: str = "all",
     status: str | None = None,
@@ -67,8 +68,8 @@ def search(
         Query(
             q=q, source=source, time_preset=time_preset, year_from=year_from,
             year_to=year_to, creator=creator, cluster_id=cluster_id,
-            include_ads=include_ads, actionable=actionable, status=status,
-            sort=sort, offset=offset, limit=limit,
+            tags=tuple(tags), include_ads=include_ads, actionable=actionable,
+            status=status, sort=sort, offset=offset, limit=limit,
         )
     )
     return SearchResponse(
@@ -141,6 +142,7 @@ def facets() -> Facets:
         top_creators_saved=f.get("top_creators_saved", []),
         top_creators_liked=f.get("top_creators_liked", []),
         top_creators_combined=f.get("top_creators_combined", []),
+        top_tags=f.get("top_tags", []),
         like_save_gap=f.get("like_save_gap", []),
         year_counts=f.get("year_counts", {}),
         cluster_split={str(k): v for k, v in f.get("cluster_split", {}).items()},

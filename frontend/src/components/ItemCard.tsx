@@ -4,10 +4,12 @@ import { cx, relTime } from "../util";
 export function ItemCard({
   item,
   onOpen,
+  onTagClick,
   emphasiseNote = false,
 }: {
   item: Item;
   onOpen: () => void;
+  onTagClick?: (tag: string) => void;
   emphasiseNote?: boolean;
 }) {
   const st = item.state.status;
@@ -28,11 +30,34 @@ export function ItemCard({
 
       {!emphasiseNote && item.tags.length > 0 && (
         <div className="card__tags">
-          {item.tags.slice(0, 4).map((t) => (
-            <span className="tag" key={t}>
-              #{t}
-            </span>
-          ))}
+          {item.tags.slice(0, 3).map((t) =>
+            onTagClick ? (
+              <span
+                className="tag tag--clickable"
+                key={t}
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTagClick(t);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onTagClick(t);
+                  }
+                }}
+              >
+                #{t}
+              </span>
+            ) : (
+              <span className="tag" key={t}>
+                #{t}
+              </span>
+            ),
+          )}
+          {item.tags.length > 3 && <span className="tag tag--more">+{item.tags.length - 3}</span>}
         </div>
       )}
 

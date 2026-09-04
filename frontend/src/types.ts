@@ -52,6 +52,11 @@ export interface CreatorFacet {
   count: number;
 }
 
+export interface TagFacet {
+  tag: string;
+  count: number;
+}
+
 export interface Facets {
   total_items: number;
   saved_count: number;
@@ -62,6 +67,7 @@ export interface Facets {
   top_creators_saved: CreatorFacet[];
   top_creators_liked: CreatorFacet[];
   top_creators_combined: CreatorFacet[];
+  top_tags: TagFacet[];
   like_save_gap: { creator: string; likes: number }[];
   year_counts: Record<string, number>;
   cluster_split: Record<string, { saved: number; liked: number }>;
@@ -90,6 +96,7 @@ export interface Query {
   time_preset?: string;
   creator?: string;
   cluster_id?: number;
+  tags?: string[];
   include_ads?: boolean;
   actionable?: "all" | "actionable" | "info";
   status?: Status;

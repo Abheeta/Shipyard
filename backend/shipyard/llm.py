@@ -14,15 +14,32 @@ import json
 import re
 from collections import Counter
 
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+
 from .config import settings
 
-_STOPWORDS = set(
-    """a an the and or but if then than so of to in on for with without at by from up
-    down out over under again further once here there all any both each few more most
-    other some such no nor not only own same too very can will just don should now this
-    that these those i me my we our you your it its is are was were be been being do does
-    did doing have has had as about into your you'll you're it's im i'm get got make made
-    how what why when where who new video reel post today one two like really""".split()
+# sklearn's general-English list (articles, prepositions, pronouns — "her",
+# "she", "they", "who"...) plus caption-specific filler that isn't in a
+# standard stopword list but still isn't a topic ("video", "reel", "today",
+# "im"/"i'm" contractions without the apostrophe once tokenized, etc.).
+_STOPWORDS = set(ENGLISH_STOP_WORDS) | set(
+    """don should now im get got make made how new video reel post today one
+    two like really via cc""".split()
+)
+
+# Instagram/TikTok cross-posting boilerplate: high document-frequency across
+# almost any personal export, so they never carry topical signal even though
+# they look like content words. Filtered out of cluster names and keyword tags
+# (but NOT out of full-text search/embeddings — a literal search for "fyp"
+# should still work).
+_SOCIAL_NOISE = set(
+    """fyp fypp fypage foryou foryoupage explore explorepage viral viralvideo
+    viralreels trending trend reels reel reelsinstagram reelitfeelit instagram
+    instagood instadaily instalike tiktok video videos repost share shares
+    comment comments follow followers following subscribe subscribers like
+    likes linkinbio dm dmforcollab collab collaboration ad sponsored paid
+    partnership presave preorder linkinbio bio credit creditcc cc via
+    duet stitch capcut""".split()
 )
 
 _ACTIONABLE_HINTS = (
@@ -47,10 +64,24 @@ def _first_sentence(text: str, limit: int = 160) -> str:
     return s if len(s) <= limit else s[: limit - 1].rstrip() + "…"
 
 
+def _dedupe_stems(words: list[str], n: int) -> list[str]:
+    """Drop a candidate that's just a stem/plural/typo variant of one already
+    kept (e.g. "beyonce" / "beyonc" / "beyhive" all collapsing to one entry)."""
+    kept: list[str] = []
+    for w in words:
+        if any(w[:5] == k[:5] or w in k or k in w for k in kept):
+            continue
+        kept.append(w)
+        if len(kept) >= n:
+            break
+    return kept
+
+
 def _keywords(text: str, n: int = 5) -> list[str]:
     words = re.findall(r"[a-zA-Z][a-zA-Z'-]{2,}", (text or "").lower())
-    freq = Counter(w for w in words if w not in _STOPWORDS)
-    return [w for w, _ in freq.most_common(n)]
+    freq = Counter(w for w in words if w not in _STOPWORDS and w not in _SOCIAL_NOISE)
+    ranked = [w for w, _ in freq.most_common(n * 3)]
+    return _dedupe_stems(ranked, n)
 
 
 def _heuristic_actionable(caption: str) -> bool:
@@ -64,7 +95,8 @@ def _heuristic_actionable(caption: str) -> bool:
 
 def _heuristic_enrich_one(item: dict) -> dict:
     caption = item.get("caption") or ""
-    tags = [t.lower() for t in (item.get("hashtags") or [])][:5]
+    hashtags = [t.lower() for t in (item.get("hashtags") or []) if t]
+    tags = _dedupe_stems([t for t in hashtags if t not in _SOCIAL_NOISE], 5)
     if not tags:
         tags = _keywords(caption, 5)
     summary = _first_sentence(caption)
@@ -229,13 +261,45 @@ def answer_question(question: str, items: list[dict]) -> tuple[str, bool]:
             return _anthropic_answer(question, items), True
         except Exception as e:  # pragma: no cover
             print(f"  ! anthropic answer failed ({e})")
+    return _heuristic_answer(question, items), False
+
+
+def _heuristic_answer(question: str, items: list[dict]) -> str:
+    """No-LLM synthesis: no reasoning, but groups + dedupes the retrieved
+    items into something more like an answer than a raw ranked dump."""
     if not items:
-        return ("Q&A needs the Claude API (set LLM_PROVIDER=anthropic and "
-                "ANTHROPIC_API_KEY). No items matched this query either.", False)
-    lines = [
-        "Q&A synthesis is off (no Claude API key). Closest matches from your archive:",
-        "",
-    ]
-    for n, it in enumerate(items, 1):
-        lines.append(f"[{n}] @{it.get('creator','?')} — {it.get('summary') or _first_sentence(it.get('caption') or '')}")
-    return "\n".join(lines), False
+        return (
+            "Nothing in your archive matches that closely. Try different "
+            "wording, or set LLM_PROVIDER=anthropic for real synthesis over "
+            "sparser matches."
+        )
+
+    groups: dict[str, list[dict]] = {}
+    order: list[str] = []
+    for it in items:
+        key = it.get("cluster_name") or "Ungrouped"
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(it)
+
+    n_actionable = sum(1 for it in items if it.get("is_actionable", True))
+    creators = {it.get("creator") for it in items if it.get("creator")}
+
+    head = (
+        f"Q&A synthesis is off (LLM_PROVIDER=none) — grouping your {len(items)} "
+        f"closest matches instead of reasoning over them "
+        f"({n_actionable} to-do, {len(items) - n_actionable} to-know, "
+        f"from {len(creators)} creator{'s' if len(creators) != 1 else ''})."
+    )
+    lines = [head, ""]
+    for key in order:
+        group = groups[key]
+        lines.append(f"{key} ({len(group)})")
+        for it in group[:5]:
+            summary = it.get("summary") or _first_sentence(it.get("caption") or "") or "(no caption)"
+            lines.append(f"  · @{it.get('creator', '?')} — {summary}")
+        if len(group) > 5:
+            lines.append(f"  · …and {len(group) - 5} more")
+        lines.append("")
+    return "\n".join(lines).rstrip()

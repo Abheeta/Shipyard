@@ -52,9 +52,29 @@ export function FilterConsole({
   const [text, setText] = useState(query.q ?? "");
   const [topicsOpen, setTopicsOpen] = useState(false);
   const [creatorsOpen, setCreatorsOpen] = useState(false);
+  const [tagsOpen, setTagsOpen] = useState(false);
 
   useEffect(() => setText(query.q ?? ""), [query.q]);
   const set = (patch: Partial<Query>) => onChange({ ...query, ...patch });
+
+  const activeTags = query.tags ?? [];
+  const toggleTag = (tag: string) => {
+    const next = activeTags.includes(tag) ? activeTags.filter((t) => t !== tag) : [...activeTags, tag];
+    set({ tags: next.length ? next : undefined });
+  };
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const raw = text.trim();
+    const hashtagTokens = Array.from(raw.matchAll(/#([a-z0-9_]+)/gi)).map((m) => m[1].toLowerCase());
+    const rest = raw.replace(/#[a-z0-9_]+/gi, "").replace(/\s+/g, " ").trim();
+    if (hashtagTokens.length) {
+      const merged = Array.from(new Set([...activeTags, ...hashtagTokens]));
+      set({ q: rest || undefined, tags: merged });
+    } else {
+      set({ q: rest || undefined });
+    }
+  };
 
   const creators =
     query.source === "saved"
@@ -64,19 +84,14 @@ export function FilterConsole({
         : facets?.top_creators_combined;
 
   const topics = (facets?.clusters ?? []).filter((c) => c.cluster_id >= 0).slice(0, 30);
+  const tags = facets?.top_tags ?? [];
 
   return (
     <section className="console" aria-label="Filters">
-      <form
-        className="console__search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          set({ q: text.trim() || undefined });
-        }}
-      >
+      <form className="console__search" onSubmit={submitSearch}>
         <input
           className="field"
-          placeholder="Search your archive — a topic, a phrase, a creator…"
+          placeholder="Search your archive — a topic, a phrase, a creator, or #a-tag…"
           value={text}
           onChange={(e) => setText(e.target.value)}
           aria-label="Search"
@@ -84,8 +99,12 @@ export function FilterConsole({
         <button className="btn btn--primary" type="submit">
           Search
         </button>
-        {query.q && (
-          <button type="button" className="btn" onClick={() => set({ q: undefined })}>
+        {(query.q || activeTags.length > 0) && (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => set({ q: undefined, tags: undefined })}
+          >
             Clear
           </button>
         )}
@@ -101,6 +120,18 @@ export function FilterConsole({
           <option value="oldest">Oldest</option>
         </select>
       </form>
+
+      {activeTags.length > 0 && (
+        <div className="console__row console__row--tags">
+          <span className="eyebrow">Tags</span>
+          {activeTags.map((t) => (
+            <button key={t} className="chip is-active" onClick={() => toggleTag(t)}>
+              #{t}
+              <span className="chip__x">✕</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="console__row">
         <span className="eyebrow">Source</span>
@@ -134,30 +165,32 @@ export function FilterConsole({
         ))}
       </div>
 
-      {topics.length > 0 && (
+      {(topics.length > 0 || tags.length > 0) && (
         <div className="console__facets">
-          <div className="facet-line">
-            <span className="eyebrow">Topic</span>
-            <div className={cx("facet-line__chips", topicsOpen && "is-open")}>
-              {topics.map((c) => (
-                <button
-                  key={c.cluster_id}
-                  className={cx("chip", query.cluster_id === c.cluster_id && "is-active")}
-                  onClick={() =>
-                    set({ cluster_id: query.cluster_id === c.cluster_id ? undefined : c.cluster_id })
-                  }
-                >
-                  {c.name}
-                  <span className="chip__n">{c.size}</span>
+          {topics.length > 0 && (
+            <div className="facet-line">
+              <span className="eyebrow">Topic</span>
+              <div className={cx("facet-line__chips", topicsOpen && "is-open")}>
+                {topics.map((c) => (
+                  <button
+                    key={c.cluster_id}
+                    className={cx("chip", query.cluster_id === c.cluster_id && "is-active")}
+                    onClick={() =>
+                      set({ cluster_id: query.cluster_id === c.cluster_id ? undefined : c.cluster_id })
+                    }
+                  >
+                    {c.name}
+                    <span className="chip__n">{c.size}</span>
+                  </button>
+                ))}
+              </div>
+              {topics.length > 8 && (
+                <button className="btn btn--ghost btn--sm" onClick={() => setTopicsOpen((o) => !o)}>
+                  {topicsOpen ? "less" : "all"}
                 </button>
-              ))}
+              )}
             </div>
-            {topics.length > 8 && (
-              <button className="btn btn--ghost btn--sm" onClick={() => setTopicsOpen((o) => !o)}>
-                {topicsOpen ? "less" : "all"}
-              </button>
-            )}
-          </div>
+          )}
 
           {creators && creators.length > 0 && (
             <div className="facet-line">
@@ -177,6 +210,29 @@ export function FilterConsole({
               {creators.length > 8 && (
                 <button className="btn btn--ghost btn--sm" onClick={() => setCreatorsOpen((o) => !o)}>
                   {creatorsOpen ? "less" : "all"}
+                </button>
+              )}
+            </div>
+          )}
+
+          {tags.length > 0 && (
+            <div className="facet-line">
+              <span className="eyebrow">Tags</span>
+              <div className={cx("facet-line__chips", tagsOpen && "is-open")}>
+                {tags.slice(0, 40).map((t) => (
+                  <button
+                    key={t.tag}
+                    className={cx("chip", activeTags.includes(t.tag) && "is-active")}
+                    onClick={() => toggleTag(t.tag)}
+                  >
+                    #{t.tag}
+                    <span className="chip__n">{t.count}</span>
+                  </button>
+                ))}
+              </div>
+              {tags.length > 8 && (
+                <button className="btn btn--ghost btn--sm" onClick={() => setTagsOpen((o) => !o)}>
+                  {tagsOpen ? "less" : "all"}
                 </button>
               )}
             </div>

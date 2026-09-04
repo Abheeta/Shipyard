@@ -67,6 +67,15 @@ export function App() {
   const nextTheme = () =>
     setTheme((t) => (t === "system" ? (prefersDark() ? "light" : "dark") : t === "dark" ? "light" : "dark"));
 
+  const filterByTag = useCallback((tag: string) => {
+    setQuery((q) => {
+      const cur = q.tags ?? [];
+      return cur.includes(tag) ? q : { ...q, tags: [...cur, tag] };
+    });
+    setSelected(null);
+    setView("library");
+  }, []);
+
   return (
     <div className="shell">
       <header className="topbar">
@@ -110,6 +119,9 @@ export function App() {
                   ? ` · ${facets.clusters.find((c) => c.cluster_id === query.cluster_id)?.name ?? "topic"}`
                   : ""}
                 {query.creator ? ` · @${query.creator}` : ""}
+                {query.tags && query.tags.length > 0
+                  ? ` · ${query.tags.map((t) => `#${t}`).join(" ")}`
+                  : ""}
               </span>
             </div>
             {!loading && !items.length ? (
@@ -120,7 +132,7 @@ export function App() {
             ) : (
               <div className="grid">
                 {items.map((it) => (
-                  <ItemCard key={it.id} item={it} onOpen={() => openItem(it)} />
+                  <ItemCard key={it.id} item={it} onOpen={() => openItem(it)} onTagClick={filterByTag} />
                 ))}
               </div>
             )}
@@ -152,7 +164,13 @@ export function App() {
       </main>
 
       {selected && (
-        <ItemDetail item={selected} onClose={() => setSelected(null)} onUpdated={refreshItem} onOpen={openItem} />
+        <ItemDetail
+          item={selected}
+          onClose={() => setSelected(null)}
+          onUpdated={refreshItem}
+          onOpen={openItem}
+          onTagClick={filterByTag}
+        />
       )}
     </div>
   );

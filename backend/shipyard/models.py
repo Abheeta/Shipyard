@@ -108,6 +108,11 @@ class CreatorFacet(BaseModel):
     count: int
 
 
+class TagFacet(BaseModel):
+    tag: str
+    count: int
+
+
 class Facets(BaseModel):
     total_items: int
     saved_count: int
@@ -118,6 +123,7 @@ class Facets(BaseModel):
     top_creators_saved: list[CreatorFacet]
     top_creators_liked: list[CreatorFacet]
     top_creators_combined: list[CreatorFacet]
+    top_tags: list[TagFacet] = []
     like_save_gap: list[dict[str, Any]] = []
     year_counts: dict[str, int]
     cluster_split: dict[str, dict[str, int]] = {}

@@ -24,7 +24,12 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
 function qs(query: Query): string {
   const p = new URLSearchParams();
   Object.entries(query).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== "") p.set(k, String(v));
+    if (v === undefined || v === null || v === "") return;
+    if (Array.isArray(v)) {
+      v.forEach((item) => p.append(k, String(item)));
+    } else {
+      p.set(k, String(v));
+    }
   });
   return p.toString();
 }
