@@ -1,0 +1,26 @@
+# Render blueprint. Single web service + a small persistent disk.
+# The raw exports and prebuilt index are expected on the disk (or committed);
+# adjust RAW_*_PATH / INDEX_DIR as needed.
+services:
+  - type: web
+    name: shipyard
+    runtime: docker
+    dockerfilePath: ./deploy/Dockerfile
+    dockerContext: .
+    plan: standard          # 2 GB — fastembed + index fit comfortably; "free" works with EMBED_BACKEND=tfidf
+    healthCheckPath: /api/health
+    disk:
+      name: shipyard-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: SHIPYARD_ENV
+        value: production
+      - key: EMBED_BACKEND
+        value: fastembed
+      - key: LLM_PROVIDER
+        value: none          # set to "anthropic" and add ANTHROPIC_API_KEY to enable Q&A
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"

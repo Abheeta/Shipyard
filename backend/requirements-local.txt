@@ -1,0 +1,5 @@
+# Local-dev embedding backend: sentence-transformers (torch).
+# Heavier download than fastembed but works without a newer VC++ runtime on Windows.
+# Set EMBED_BACKEND=sentence-transformers in .env when using this.
+-r requirements.txt
+sentence-transformers==3.3.1

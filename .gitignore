@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Env
+.env
+.env.local
+
+# Shipyard data
+backend/data/raw/*
+!backend/data/raw/.gitkeep
+backend/data/index/*
+!backend/data/index/.gitkeep
+backend/data/*.sqlite
+backend/data/*.sqlite-*
+
+# Instagram exports at repo root (source data, not committed)
+saved_posts.json
+liked_posts*.json
+
+# Models cache
+.fastembed_cache/
+
+# OS
+.DS_Store
+Thumbs.db

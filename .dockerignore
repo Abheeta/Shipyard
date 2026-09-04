@@ -1,0 +1,13 @@
+**/.venv
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+frontend/dist
+backend/data/index/*
+backend/data/*.sqlite*
+.fastembed_cache
+.git
+*.md
+!RUNNING.md
+liked_posts*.json
+saved_posts.json

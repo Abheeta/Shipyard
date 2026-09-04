@@ -1,0 +1,19 @@
+# Base runtime. Pick ONE embedding backend below (or use EMBED_BACKEND=hash, no extra deps).
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-dotenv==1.0.1
+numpy==2.2.1
+pandas==2.2.3
+pyarrow==18.1.0
+scikit-learn==1.6.0
+anthropic==0.42.0
+httpx==0.28.1
+
+# ---- Embedding backend: fastembed (default; ONNX, small, best on Linux/Render) ----
+# onnxruntime is pinned to 1.19.2 — newer wheels need a VC++ runtime that older
+# Windows 10 builds don't ship. If ONNX still fails to load, set
+# EMBED_BACKEND=tfidf (no native deps) or use requirements-local.txt.
+fastembed==0.5.1
+onnxruntime==1.19.2
