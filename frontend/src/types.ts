@@ -57,6 +57,13 @@ export interface CreatorRank extends CreatorFacet {
   liked_count: number;
 }
 
+export interface CreatorRankResponse {
+  creators: CreatorRank[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
 export interface TagFacet {
   tag: string;
   count: number;
@@ -105,6 +112,7 @@ export interface Query {
   include_ads?: boolean;
   actionable?: "all" | "actionable" | "info";
   status?: Status;
+  intent?: Intent;
   sort?: "relevance" | "recent" | "oldest";
   offset?: number;
   limit?: number;

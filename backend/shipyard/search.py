@@ -29,6 +29,7 @@ class Query:
     include_ads: bool = True
     actionable: str = "all"       # all | actionable | info
     status: str | None = None     # saved | scheduled | resolved
+    intent: str | None = None     # try | learn | do_later | remember — user-set only, no default
     sort: str = "relevance"       # relevance | recent | oldest
     offset: int = 0
     limit: int = 40
@@ -92,15 +93,23 @@ def _prefilter(qy: Query) -> np.ndarray:
     elif qy.actionable == "info":
         m &= ~df["is_actionable"].to_numpy().astype(bool)
 
-    if qy.status:
+    if qy.status or qy.intent:
         ids = df["id"].to_numpy()
         states = state.get_states(ids[m].tolist())
-        want = qy.status
-        keep = np.array(
-            [states.get(i, {}).get("status", "saved") == want for i in ids],
-            dtype=bool,
-        )
-        m &= keep
+        if qy.status:
+            want = qy.status
+            keep = np.array(
+                [states.get(i, {}).get("status", "saved") == want for i in ids],
+                dtype=bool,
+            )
+            m &= keep
+        if qy.intent:
+            want_intent = qy.intent
+            keep = np.array(
+                [states.get(i, {}).get("user_intent") == want_intent for i in ids],
+                dtype=bool,
+            )
+            m &= keep
 
     return m
 
@@ -161,15 +170,16 @@ def run(qy: Query) -> Result:
     return Result(total=len(positions), positions=positions[page].tolist())
 
 
-def top_creators(qy: Query, n: int = 30) -> list[dict]:
+def top_creators(qy: Query, offset: int = 0, limit: int = 30) -> tuple[list[dict], int]:
     """Creators ranked within the current filter selection (topic/tags/source/
     etc.) — powers "who posts about this" discovery, as opposed to the
-    static global top-creator facets computed once at index build time."""
+    static global top-creator facets computed once at index build time.
+    Paginated: returns (page, total_distinct_creators)."""
     mask = _prefilter(qy)
     df = corpus.df[mask]
     df = df[df["creator"].astype(bool)]
     if df.empty:
-        return []
+        return [], 0
     g = (
         df.groupby("creator")
         .agg(
@@ -179,10 +189,11 @@ def top_creators(qy: Query, n: int = 30) -> list[dict]:
             liked_count=("source", lambda s: int((s == "liked").sum())),
         )
         .sort_values("count", ascending=False)
-        .head(n)
         .reset_index()
     )
-    return [
+    total = len(g)
+    page = g.iloc[offset : offset + limit]
+    rows = [
         {
             "creator": r.creator,
             "creator_name": r.creator_name,
@@ -190,8 +201,9 @@ def top_creators(qy: Query, n: int = 30) -> list[dict]:
             "saved_count": r.saved_count,
             "liked_count": r.liked_count,
         }
-        for r in g.itertuples()
+        for r in page.itertuples()
     ]
+    return rows, total
 
 
 def more_like(item_id: str, k: int = 12) -> list[int]:

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import type { CreatorRank, Facets, Query } from "../types";
+import type { CreatorRank, Facets, Intent, Query } from "../types";
 import { cx } from "../util";
 
 const TIME: [string, string][] = [
@@ -9,10 +9,12 @@ const TIME: [string, string][] = [
   ["last_year", "Last year"],
   ["older", "Older"],
 ];
-const KIND: [NonNullable<Query["actionable"]>, string][] = [
-  ["all", "Everything"],
-  ["actionable", "To do"],
-  ["info", "To know"],
+const INTENT: [Intent | "", string][] = [
+  ["", "All"],
+  ["try", "Try it"],
+  ["do_later", "Do later"],
+  ["learn", "Learn"],
+  ["remember", "Remember"],
 ];
 const STATUS: NonNullable<Query["status"]>[] = ["saved", "scheduled", "resolved"];
 const SOURCE: [NonNullable<Query["source"]>, string][] = [
@@ -76,6 +78,7 @@ export function FilterConsole({
           time_preset: query.time_preset,
           actionable: query.actionable,
           status: query.status,
+          intent: query.intent,
         })
         .then((r) => !cancelled && setRankedCreators(r.creators))
         .catch(() => !cancelled && setRankedCreators(null));
@@ -84,7 +87,15 @@ export function FilterConsole({
       cancelled = true;
       clearTimeout(t);
     };
-  }, [query.source, query.cluster_id, JSON.stringify(query.tags), query.time_preset, query.actionable, query.status]);
+  }, [
+    query.source,
+    query.cluster_id,
+    JSON.stringify(query.tags),
+    query.time_preset,
+    query.actionable,
+    query.status,
+    query.intent,
+  ]);
 
   const activeTags = query.tags ?? [];
   const toggleTag = (tag: string) => {
@@ -176,8 +187,8 @@ export function FilterConsole({
       </div>
 
       <div className="console__row">
-        <span className="eyebrow">Kind</span>
-        <Seg options={KIND} value={query.actionable ?? "all"} onPick={(v) => set({ actionable: v })} />
+        <span className="eyebrow">Intent</span>
+        <Seg options={INTENT} value={query.intent ?? ""} onPick={(v) => set({ intent: v || undefined })} />
         <button
           className={cx("btn", "btn--sm", query.include_ads === false && "is-active")}
           onClick={() => set({ include_ads: query.include_ads === false ? undefined : false })}

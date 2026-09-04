@@ -6,14 +6,16 @@ import { FilterConsole } from "./components/FilterConsole";
 import { ItemCard } from "./components/ItemCard";
 import { ItemDetail } from "./components/ItemDetail";
 import { ScheduledView } from "./components/ScheduledView";
+import { CreatorsView } from "./components/CreatorsView";
 import { AskPanel } from "./components/AskPanel";
 import { Insights } from "./components/Insights";
 
-type View = "library" | "scheduled" | "ask" | "insights";
+type View = "library" | "scheduled" | "creators" | "ask" | "insights";
 const PAGE = 40;
 const TABS: [View, string][] = [
   ["library", "Library"],
   ["scheduled", "Scheduled"],
+  ["creators", "Creators"],
   ["ask", "Ask"],
   ["insights", "Insights"],
 ];
@@ -147,6 +149,14 @@ export function App() {
         )}
 
         {view === "scheduled" && <ScheduledView onOpen={openItem} facets={facets} />}
+        {view === "creators" && (
+          <CreatorsView
+            onCreator={(creator) => {
+              setQuery({ source: "both", sort: "relevance", creator });
+              setView("library");
+            }}
+          />
+        )}
         {view === "ask" && <AskPanel facets={facets} onOpen={openItem} />}
         {view === "insights" && (
           <Insights

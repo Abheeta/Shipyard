@@ -118,6 +118,9 @@ class CreatorRank(BaseModel):
 
 class CreatorRankResponse(BaseModel):
     creators: list[CreatorRank]
+    total: int = 0
+    offset: int = 0
+    limit: int = 0
 
 
 class TagFacet(BaseModel):

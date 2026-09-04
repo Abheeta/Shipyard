@@ -61,6 +61,7 @@ def search(
     include_ads: bool = True,
     actionable: str = "all",
     status: str | None = None,
+    intent: str | None = None,
     sort: str = "relevance",
     offset: int = 0,
     limit: int = Q(40, le=120),
@@ -70,7 +71,7 @@ def search(
             q=q, source=source, time_preset=time_preset, year_from=year_from,
             year_to=year_to, creator=creator, cluster_id=cluster_id,
             tags=tuple(tags), include_ads=include_ads, actionable=actionable,
-            status=status, sort=sort, offset=offset, limit=limit,
+            status=status, intent=intent, sort=sort, offset=offset, limit=limit,
         )
     )
     return SearchResponse(
@@ -90,20 +91,24 @@ def creators(
     include_ads: bool = True,
     actionable: str = "all",
     status: str | None = None,
+    intent: str | None = None,
+    offset: int = 0,
     limit: int = Q(30, le=100),
 ) -> CreatorRankResponse:
     """Creators ranked within the current topic/tag/source selection —
     "who posts about this" discovery, distinct from the static global
-    top-creator lists in /facets."""
-    ranked = top_creators(
+    top-creator lists in /facets. Paginated for full browsing of all
+    creators, not just the top handful."""
+    ranked, total = top_creators(
         Query(
             source=source, time_preset=time_preset, year_from=year_from,
             year_to=year_to, cluster_id=cluster_id, tags=tuple(tags),
             include_ads=include_ads, actionable=actionable, status=status,
+            intent=intent,
         ),
-        n=limit,
+        offset=offset, limit=limit,
     )
-    return CreatorRankResponse(creators=ranked)
+    return CreatorRankResponse(creators=ranked, total=total, offset=offset, limit=limit)
 
 
 @router.get("/items/{item_id}", response_model=Item)
