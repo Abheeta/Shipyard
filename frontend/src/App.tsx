@@ -13,7 +13,7 @@ import { Insights } from "./components/Insights";
 type View = "library" | "scheduled" | "creators" | "ask" | "insights";
 const PAGE = 40;
 const TABS: [View, string][] = [
-  ["library", "Library"],
+  ["library", "Rediscover"],
   ["scheduled", "Scheduled"],
   ["creators", "Creators"],
   ["ask", "Ask"],
@@ -82,7 +82,7 @@ export function App() {
     <div className="shell">
       <header className="topbar">
         <span className="wordmark">
-          SHIP<b>·</b>YARD
+          BACK<b>·</b>LOG
         </span>
         <nav className="nav">
           {TABS.map(([v, label]) => (

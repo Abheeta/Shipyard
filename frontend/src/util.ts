@@ -12,7 +12,7 @@ export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
 }
 
-const KEY = "shipyard-theme";
+const KEY = "backlog-theme";
 export type Theme = "light" | "dark" | "system";
 
 export function readTheme(): Theme {
