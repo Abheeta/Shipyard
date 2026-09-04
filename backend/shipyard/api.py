@@ -11,12 +11,13 @@ from .models import (
     AskCitation,
     AskRequest,
     AskResponse,
+    CreatorRankResponse,
     Facets,
     Item,
     ItemPatch,
     SearchResponse,
 )
-from .search import Query, more_like, run
+from .search import Query, more_like, run, top_creators
 
 router = APIRouter(prefix="/api")
 
@@ -76,6 +77,33 @@ def search(
         total=res.total, offset=offset, limit=limit,
         items=_hydrate(res.positions, res.scores),
     )
+
+
+@router.get("/creators", response_model=CreatorRankResponse)
+def creators(
+    source: str = "both",
+    time_preset: str | None = None,
+    year_from: int | None = None,
+    year_to: int | None = None,
+    cluster_id: int | None = None,
+    tags: list[str] = Q([]),
+    include_ads: bool = True,
+    actionable: str = "all",
+    status: str | None = None,
+    limit: int = Q(30, le=100),
+) -> CreatorRankResponse:
+    """Creators ranked within the current topic/tag/source selection —
+    "who posts about this" discovery, distinct from the static global
+    top-creator lists in /facets."""
+    ranked = top_creators(
+        Query(
+            source=source, time_preset=time_preset, year_from=year_from,
+            year_to=year_to, cluster_id=cluster_id, tags=tuple(tags),
+            include_ads=include_ads, actionable=actionable, status=status,
+        ),
+        n=limit,
+    )
+    return CreatorRankResponse(creators=ranked)
 
 
 @router.get("/items/{item_id}", response_model=Item)

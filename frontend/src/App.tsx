@@ -5,15 +5,15 @@ import { applyTheme, cx, prefersDark, readTheme, type Theme } from "./util";
 import { FilterConsole } from "./components/FilterConsole";
 import { ItemCard } from "./components/ItemCard";
 import { ItemDetail } from "./components/ItemDetail";
-import { TodayView } from "./components/TodayView";
+import { ScheduledView } from "./components/ScheduledView";
 import { AskPanel } from "./components/AskPanel";
 import { Insights } from "./components/Insights";
 
-type View = "library" | "today" | "ask" | "insights";
+type View = "library" | "scheduled" | "ask" | "insights";
 const PAGE = 40;
 const TABS: [View, string][] = [
   ["library", "Library"],
-  ["today", "Today"],
+  ["scheduled", "Scheduled"],
   ["ask", "Ask"],
   ["insights", "Insights"],
 ];
@@ -86,7 +86,7 @@ export function App() {
           {TABS.map(([v, label]) => (
             <button key={v} className={cx(view === v && "is-active")} onClick={() => setView(v)}>
               {label}
-              {v === "today" && facets && <span className="n" />}
+              {v === "scheduled" && facets && <span className="n" />}
             </button>
           ))}
         </nav>
@@ -146,7 +146,7 @@ export function App() {
           </>
         )}
 
-        {view === "today" && <TodayView onOpen={openItem} facets={facets} />}
+        {view === "scheduled" && <ScheduledView onOpen={openItem} facets={facets} />}
         {view === "ask" && <AskPanel facets={facets} onOpen={openItem} />}
         {view === "insights" && (
           <Insights

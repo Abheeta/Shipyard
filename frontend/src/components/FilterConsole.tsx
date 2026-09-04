@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { Facets, Query } from "../types";
+import { api } from "../api";
+import type { CreatorRank, Facets, Query } from "../types";
 import { cx } from "../util";
 
 const TIME: [string, string][] = [
@@ -53,9 +54,37 @@ export function FilterConsole({
   const [topicsOpen, setTopicsOpen] = useState(false);
   const [creatorsOpen, setCreatorsOpen] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(false);
+  const [rankedCreators, setRankedCreators] = useState<CreatorRank[] | null>(null);
 
   useEffect(() => setText(query.q ?? ""), [query.q]);
   const set = (patch: Partial<Query>) => onChange({ ...query, ...patch });
+
+  const discovering = query.cluster_id != null || (query.tags?.length ?? 0) > 0;
+
+  // Re-rank the creator chip list to "who posts about this" whenever the
+  // topic/tag/source selection changes — a topic or tag alone is enough
+  // signal to discover by, so this only depends on the filters that shape
+  // *which* creators are relevant, not free-text search or pagination.
+  useEffect(() => {
+    let cancelled = false;
+    const t = setTimeout(() => {
+      api
+        .creators({
+          source: query.source,
+          cluster_id: query.cluster_id,
+          tags: query.tags,
+          time_preset: query.time_preset,
+          actionable: query.actionable,
+          status: query.status,
+        })
+        .then((r) => !cancelled && setRankedCreators(r.creators))
+        .catch(() => !cancelled && setRankedCreators(null));
+    }, 200);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [query.source, query.cluster_id, JSON.stringify(query.tags), query.time_preset, query.actionable, query.status]);
 
   const activeTags = query.tags ?? [];
   const toggleTag = (tag: string) => {
@@ -76,12 +105,16 @@ export function FilterConsole({
     }
   };
 
-  const creators =
+  const staticCreators =
     query.source === "saved"
       ? facets?.top_creators_saved
       : query.source === "liked"
         ? facets?.top_creators_liked
         : facets?.top_creators_combined;
+  // While the topic/tag-ranked fetch is in flight (or before the first
+  // topic/tag pick), fall back to the static global list so the chip row
+  // never flashes empty.
+  const creators = rankedCreators ?? staticCreators;
 
   const topics = (facets?.clusters ?? []).filter((c) => c.cluster_id >= 0).slice(0, 30);
   const tags = facets?.top_tags ?? [];
@@ -194,7 +227,7 @@ export function FilterConsole({
 
           {creators && creators.length > 0 && (
             <div className="facet-line">
-              <span className="eyebrow">Creator</span>
+              <span className="eyebrow">{discovering ? "Creators for this" : "Creator"}</span>
               <div className={cx("facet-line__chips", creatorsOpen && "is-open")}>
                 {creators.slice(0, 15).map((c) => (
                   <button

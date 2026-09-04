@@ -45,9 +45,6 @@ export function ItemDetail({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const inLoop =
-    item.source === "saved" || item.state.status !== "saved" || !!item.state.scheduled_at;
-
   const save = async (extra?: Parameters<typeof api.patch>[1]) => {
     setBusy(true);
     try {
@@ -56,6 +53,9 @@ export function ItemDetail({
           user_note: note || null,
           user_intent: intent || null,
           scheduled_at: date || null,
+          // a liked item picking up a note/intent/schedule is, by definition,
+          // being pulled into the loop — no separate "promote" step needed.
+          ...(item.source !== "saved" ? { promote_to_saved: true } : {}),
           ...extra,
         }),
       );
@@ -75,7 +75,7 @@ export function ItemDetail({
           <h2>@{item.creator || "unknown"}</h2>
           <div className="panel__sub">
             {item.creator_name && item.creator_name !== item.creator ? `${item.creator_name} · ` : ""}
-            you saved this {relTime(item.timestamp)} ·{" "}
+            you {item.source === "saved" ? "saved" : "liked"} this {relTime(item.timestamp)} ·{" "}
             <a href={item.url} target="_blank" rel="noreferrer">
               open on Instagram ↗
             </a>
@@ -129,86 +129,68 @@ export function ItemDetail({
           </div>
         )}
 
-        {inLoop ? (
-          <>
-            <div className="panel__section">
-              <span className="eyebrow">Note — why keep this</span>
-              <textarea
-                className="field"
-                rows={2}
-                placeholder="e.g. try the loose-gauge version this weekend"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
-            </div>
+        <div className="panel__section">
+          <span className="eyebrow">Note — why keep this</span>
+          <textarea
+            className="field"
+            rows={2}
+            placeholder="e.g. try the loose-gauge version this weekend"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
 
-            <div className="panel__section">
-              <span className="eyebrow">Intent</span>
-              <div className="control-row">
-                {INTENTS.map(([v, label]) => (
-                  <button
-                    key={v}
-                    className={cx("btn", "btn--sm", intent === v && "is-active")}
-                    onClick={() => setIntent(intent === v ? "" : v)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="panel__section">
-              <span className="eyebrow">Schedule</span>
-              <div className="control-row">
-                <input
-                  type="date"
-                  className="field"
-                  style={{ width: "auto" }}
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-                {date && (
-                  <button className="btn btn--sm" onClick={() => setDate("")}>
-                    clear
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="control-row">
-              <button className="btn btn--primary" disabled={busy} onClick={() => save()}>
-                Save changes
+        <div className="panel__section">
+          <span className="eyebrow">Intent</span>
+          <div className="control-row">
+            {INTENTS.map(([v, label]) => (
+              <button
+                key={v}
+                className={cx("btn", "btn--sm", intent === v && "is-active")}
+                onClick={() => setIntent(intent === v ? "" : v)}
+              >
+                {label}
               </button>
-              {item.state.status !== "resolved" ? (
-                <button className="btn" disabled={busy} onClick={() => save({ status: "resolved" })}>
-                  ✓ Mark resolved
-                </button>
-              ) : (
-                <button
-                  className="btn"
-                  disabled={busy}
-                  onClick={() => save({ status: date ? "scheduled" : "saved" })}
-                >
-                  Reopen
-                </button>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="panel__section">
-            <p className="promote-note">
-              A <b>liked</b> post — passive interest. Promote it into the loop to add a note,
-              intent and a date.
-            </p>
-            <button
-              className="btn btn--primary"
-              disabled={busy}
-              onClick={() => save({ promote_to_saved: true })}
-            >
-              + Pull into the loop
-            </button>
+            ))}
           </div>
-        )}
+        </div>
+
+        <div className="panel__section">
+          <span className="eyebrow">Schedule</span>
+          <div className="control-row">
+            <input
+              type="date"
+              className="field"
+              style={{ width: "auto" }}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+            {date && (
+              <button className="btn btn--sm" onClick={() => setDate("")}>
+                clear
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="control-row">
+          <button className="btn btn--primary" disabled={busy} onClick={() => save()}>
+            Save changes
+          </button>
+          {item.state.status !== "resolved" ? (
+            <button className="btn" disabled={busy} onClick={() => save({ status: "resolved" })}>
+              ✓ Mark resolved
+            </button>
+          ) : (
+            <button
+              className="btn"
+              disabled={busy}
+              onClick={() => save({ status: date ? "scheduled" : "saved" })}
+            >
+              Reopen
+            </button>
+          )}
+        </div>
 
         <div className="panel__section">
           <span className="eyebrow">Original metadata</span>

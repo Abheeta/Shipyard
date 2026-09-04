@@ -1,5 +1,6 @@
 import type {
   AskResponse,
+  CreatorRank,
   Facets,
   Item,
   Query,
@@ -40,7 +41,9 @@ export const api = {
   item: (id: string) => j<Item>(`/api/items/${encodeURIComponent(id)}`),
   similar: (id: string) =>
     j<SearchResponse>(`/api/items/${encodeURIComponent(id)}/similar`),
-  today: () => j<SearchResponse>("/api/today"),
+  creators: (
+    query: Pick<Query, "source" | "time_preset" | "cluster_id" | "tags" | "include_ads" | "actionable" | "status">,
+  ) => j<{ creators: CreatorRank[] }>(`/api/creators?${qs(query)}`),
   patch: (
     id: string,
     body: {

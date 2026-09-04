@@ -5,7 +5,7 @@ import { ItemCard } from "./ItemCard";
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
-export function TodayView({
+export function ScheduledView({
   onOpen,
   facets,
 }: {
@@ -19,7 +19,7 @@ export function TodayView({
   useEffect(() => {
     setLoading(true);
     api
-      .today()
+      .search({ status: "scheduled", source: "both", sort: "recent", limit: 100 })
       .then((r) => setItems(r.items))
       .finally(() => setLoading(false));
     api
@@ -29,8 +29,12 @@ export function TodayView({
   }, []);
 
   const t = todayISO();
-  const overdue = items.filter((i) => (i.state.scheduled_at ?? "") < t);
-  const due = items.filter((i) => (i.state.scheduled_at ?? "") >= t);
+  const byDate = [...items].sort((a, b) =>
+    (a.state.scheduled_at ?? "").localeCompare(b.state.scheduled_at ?? ""),
+  );
+  const overdue = byDate.filter((i) => (i.state.scheduled_at ?? "") < t);
+  const dueToday = byDate.filter((i) => (i.state.scheduled_at ?? "") === t);
+  const upcoming = byDate.filter((i) => (i.state.scheduled_at ?? "") > t);
 
   if (loading) return <div className="spinner">Loading…</div>;
 
@@ -81,14 +85,27 @@ export function TodayView({
           </div>
         </div>
       )}
-      {due.length > 0 && (
+      {dueToday.length > 0 && (
         <div className="today-section">
           <div className="today-section__head">
             <h2>Today</h2>
-            <span className="mono">{due.length}</span>
+            <span className="mono">{dueToday.length}</span>
           </div>
           <div className="grid">
-            {due.map((it) => (
+            {dueToday.map((it) => (
+              <ItemCard key={it.id} item={it} onOpen={() => onOpen(it)} emphasiseNote />
+            ))}
+          </div>
+        </div>
+      )}
+      {upcoming.length > 0 && (
+        <div className="today-section">
+          <div className="today-section__head">
+            <h2>Upcoming</h2>
+            <span className="mono">{upcoming.length}</span>
+          </div>
+          <div className="grid">
+            {upcoming.map((it) => (
               <ItemCard key={it.id} item={it} onOpen={() => onOpen(it)} emphasiseNote />
             ))}
           </div>

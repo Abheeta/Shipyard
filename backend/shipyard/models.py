@@ -108,6 +108,18 @@ class CreatorFacet(BaseModel):
     count: int
 
 
+class CreatorRank(BaseModel):
+    creator: str
+    creator_name: str
+    count: int
+    saved_count: int
+    liked_count: int
+
+
+class CreatorRankResponse(BaseModel):
+    creators: list[CreatorRank]
+
+
 class TagFacet(BaseModel):
     tag: str
     count: int

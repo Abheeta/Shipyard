@@ -161,6 +161,39 @@ def run(qy: Query) -> Result:
     return Result(total=len(positions), positions=positions[page].tolist())
 
 
+def top_creators(qy: Query, n: int = 30) -> list[dict]:
+    """Creators ranked within the current filter selection (topic/tags/source/
+    etc.) — powers "who posts about this" discovery, as opposed to the
+    static global top-creator facets computed once at index build time."""
+    mask = _prefilter(qy)
+    df = corpus.df[mask]
+    df = df[df["creator"].astype(bool)]
+    if df.empty:
+        return []
+    g = (
+        df.groupby("creator")
+        .agg(
+            count=("id", "size"),
+            creator_name=("creator_name", "first"),
+            saved_count=("source", lambda s: int((s == "saved").sum())),
+            liked_count=("source", lambda s: int((s == "liked").sum())),
+        )
+        .sort_values("count", ascending=False)
+        .head(n)
+        .reset_index()
+    )
+    return [
+        {
+            "creator": r.creator,
+            "creator_name": r.creator_name,
+            "count": int(r.count),
+            "saved_count": r.saved_count,
+            "liked_count": r.liked_count,
+        }
+        for r in g.itertuples()
+    ]
+
+
 def more_like(item_id: str, k: int = 12) -> list[int]:
     p = corpus.pos(item_id)
     if p is None:

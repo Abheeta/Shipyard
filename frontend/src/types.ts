@@ -52,6 +52,11 @@ export interface CreatorFacet {
   count: number;
 }
 
+export interface CreatorRank extends CreatorFacet {
+  saved_count: number;
+  liked_count: number;
+}
+
 export interface TagFacet {
   tag: string;
   count: number;

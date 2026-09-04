@@ -121,8 +121,14 @@ def promoted_ids() -> set[str]:
 
 
 def today_ids(on: date | None = None) -> list[str]:
-    """Items scheduled on/before `on` and not resolved, soonest first."""
-    on = on or datetime.now(timezone.utc).date()
+    """Items scheduled on/before `on` and not resolved, soonest first.
+
+    `on` compares against dates picked in the browser's local timezone (a
+    plain <input type="date">), so it must default to local "today", not
+    UTC — otherwise anything scheduled for today stays invisible until UTC
+    catches up, which can be most of a day off from the user's clock.
+    """
+    on = on or datetime.now().date()
     with _conn() as c:
         rows = c.execute(
             """

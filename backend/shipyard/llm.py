@@ -24,7 +24,7 @@ from .config import settings
 # "im"/"i'm" contractions without the apostrophe once tokenized, etc.).
 _STOPWORDS = set(ENGLISH_STOP_WORDS) | set(
     """don should now im get got make made how new video reel post today one
-    two like really via cc""".split()
+    two like really via cc just people time thing things""".split()
 )
 
 # Instagram/TikTok cross-posting boilerplate: high document-frequency across
@@ -64,6 +64,48 @@ def _first_sentence(text: str, limit: int = 160) -> str:
     return s if len(s) <= limit else s[: limit - 1].rstrip() + "…"
 
 
+_EMOJI_RE = re.compile(
+    "["
+    "\U0001F300-\U0001FAFF"  # symbols/pictographs/emoticons/transport/supplemental
+    "\U00002600-\U000027BF"  # misc symbols & dingbats
+    "\U0001F1E6-\U0001F1FF"  # regional indicators (flags)
+    "\U00002190-\U000021FF"  # arrows
+    "\U0000FE0F"  # variation selector
+    "]+",
+    flags=re.UNICODE,
+)
+
+
+def _is_garbled(text: str) -> bool:
+    """Some exports double-mangle a caption so badly that even the mojibake
+    repair in ingest.py can't recover it (leftover Latin-1-supplement soup
+    like "ð¤¦ð»ââï¸"). Detect and reject that rather than show gibberish."""
+    if not text:
+        return False
+    suspect = sum(1 for c in text if 0x80 <= ord(c) <= 0xFF)
+    return suspect / len(text) > 0.3
+
+
+def _clean_caption(text: str, limit: int = 100) -> str:
+    """A trimmed, readable lead-in from the caption itself: strip hashtags,
+    @mentions, links, emoji and boilerplate noise, then take the first
+    sentence/clause. Empty if nothing legible is left."""
+    text = text or ""
+    text = re.sub(r"https?://\S+", "", text)
+    text = re.sub(r"#\S+", "", text)
+    text = re.sub(r"(?<!\w)@\w+", "", text)
+    text = _EMOJI_RE.sub("", text)
+    text = re.sub(r"\s+", " ", text).strip(" \t\n-–—·•|.,:;")
+    if not text or _is_garbled(text):
+        return ""
+    # cut at the first sentence end, or first newline/pipe-style separator
+    m = re.split(r"(?<=[.!?])\s|(?:\s[-–—|]\s)", text, maxsplit=1)
+    s = m[0].strip()
+    if len(s) < 3 or _is_garbled(s):
+        return ""
+    return s if len(s) <= limit else s[: limit - 1].rstrip() + "…"
+
+
 def _dedupe_stems(words: list[str], n: int) -> list[str]:
     """Drop a candidate that's just a stem/plural/typo variant of one already
     kept (e.g. "beyonce" / "beyonc" / "beyhive" all collapsing to one entry)."""
@@ -93,19 +135,34 @@ def _heuristic_actionable(caption: str) -> bool:
     return True  # default: assume there's something to do
 
 
+def _heuristic_summary(caption: str, tags: list[str]) -> str:
+    """A short, clean one-liner for the card title: the caption's opening
+    clause with hashtags/mentions/links/emoji/boilerplate stripped out — not
+    the full caption (that's shown when the card is opened). Falls back to a
+    topic-keyword label when the caption has nothing legible left over."""
+    cleaned = _clean_caption(caption)
+    if cleaned:
+        return cleaned
+    topic_words = tags[:3] or _keywords(caption, 3)
+    if not topic_words:
+        return ""
+    return " · ".join(w.title() for w in topic_words)
+
+
 def _heuristic_enrich_one(item: dict) -> dict:
     caption = item.get("caption") or ""
     hashtags = [t.lower() for t in (item.get("hashtags") or []) if t]
     tags = _dedupe_stems([t for t in hashtags if t not in _SOCIAL_NOISE], 5)
     if not tags:
         tags = _keywords(caption, 5)
-    summary = _first_sentence(caption)
+    is_actionable = _heuristic_actionable(caption)
+    summary = _heuristic_summary(caption, tags)
     if not summary:
         summary = f"Post by {item.get('creator_name') or item.get('creator') or 'unknown'} (no caption)"
     return {
         "summary": summary,
         "tags": tags,
-        "is_actionable": _heuristic_actionable(caption),
+        "is_actionable": is_actionable,
     }
 
 
@@ -134,7 +191,8 @@ _ENRICH_SYS = (
     "You label saved social-media posts for a personal library. "
     "For each post you get an index, the caption text, and hashtags. "
     "Return ONLY a JSON array; one object per input in the same order, each: "
-    '{"i": <index>, "summary": "<= 18 words, plain, no hype, only facts present in the caption", '
+    '{"i": <index>, "summary": "<= 12 words, a plain description of what the post is ABOUT '
+    "(topic/subject), not a paraphrase or quote of the caption text, no hype\", "
     '"tags": ["3-6 lowercase topic tags"], '
     '"is_actionable": <true if the post is something to DO/try/make/follow, '
     "false if it is just information to know>}. "
