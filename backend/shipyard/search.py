@@ -178,6 +178,12 @@ def top_creators(qy: Query, offset: int = 0, limit: int = 30) -> tuple[list[dict
     mask = _prefilter(qy)
     df = corpus.df[mask]
     df = df[df["creator"].astype(bool)]
+    if qy.q:
+        needle = qy.q.strip().lower()
+        df = df[
+            df["creator"].str.lower().str.contains(needle, regex=False)
+            | df["creator_name"].fillna("").str.lower().str.contains(needle, regex=False)
+        ]
     if df.empty:
         return [], 0
     g = (

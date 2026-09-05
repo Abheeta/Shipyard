@@ -12,27 +12,44 @@ const SOURCE: [NonNullable<Query["source"]>, string][] = [
 
 export function CreatorsView({ onCreator }: { onCreator: (creator: string) => void }) {
   const [source, setSource] = useState<NonNullable<Query["source"]>>("both");
+  const [text, setText] = useState("");
+  const [q, setQ] = useState("");
   const [creators, setCreators] = useState<CreatorRank[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const t = setTimeout(() => setQ(text.trim()), 300);
+    return () => clearTimeout(t);
+  }, [text]);
+
   const load = useCallback((nextOffset: number, append: boolean) => {
     setLoading(true);
     api
-      .creators({ source, offset: nextOffset, limit: PAGE })
+      .creators({ q: q || undefined, source, offset: nextOffset, limit: PAGE })
       .then((r) => {
         setTotal(r.total);
         setOffset(nextOffset);
         setCreators((prev) => (append ? [...prev, ...r.creators] : r.creators));
       })
       .finally(() => setLoading(false));
-  }, [source]);
+  }, [source, q]);
 
   useEffect(() => load(0, false), [load]);
 
   return (
     <>
+      <div className="console__row" style={{ marginBottom: 16 }}>
+        <input
+          className="field"
+          placeholder="Search creators — handle or display name…"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          aria-label="Search creators"
+        />
+      </div>
+
       <div className="console__row" style={{ marginBottom: 16 }}>
         <span className="eyebrow">Source</span>
         <div className="seg">
@@ -52,7 +69,9 @@ export function CreatorsView({ onCreator }: { onCreator: (creator: string) => vo
       {!loading && !creators.length ? (
         <div className="empty">
           <div className="empty__title">No creators</div>
-          <p className="empty__body">Nothing matches this source filter.</p>
+          <p className="empty__body">
+            {q ? `Nothing matches "${q}".` : "Nothing matches this source filter."}
+          </p>
         </div>
       ) : (
         <div className="grid">

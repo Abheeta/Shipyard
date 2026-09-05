@@ -44,7 +44,7 @@ export const api = {
   creators: (
     query: Pick<
       Query,
-      "source" | "time_preset" | "cluster_id" | "tags" | "include_ads" | "actionable" | "status" | "intent"
+      "q" | "source" | "time_preset" | "cluster_id" | "tags" | "include_ads" | "actionable" | "status" | "intent"
     > & { offset?: number; limit?: number },
   ) => j<CreatorRankResponse>(`/api/creators?${qs(query as Query)}`),
   patch: (

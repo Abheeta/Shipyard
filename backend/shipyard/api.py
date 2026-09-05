@@ -82,6 +82,7 @@ def search(
 
 @router.get("/creators", response_model=CreatorRankResponse)
 def creators(
+    q: str | None = None,
     source: str = "both",
     time_preset: str | None = None,
     year_from: int | None = None,
@@ -98,10 +99,10 @@ def creators(
     """Creators ranked within the current topic/tag/source selection —
     "who posts about this" discovery, distinct from the static global
     top-creator lists in /facets. Paginated for full browsing of all
-    creators, not just the top handful."""
+    creators, not just the top handful. `q` filters by handle/display name."""
     ranked, total = top_creators(
         Query(
-            source=source, time_preset=time_preset, year_from=year_from,
+            q=q, source=source, time_preset=time_preset, year_from=year_from,
             year_to=year_to, cluster_id=cluster_id, tags=tuple(tags),
             include_ads=include_ads, actionable=actionable, status=status,
             intent=intent,
